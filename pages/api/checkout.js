@@ -5,15 +5,10 @@ export default async function handler(req, res) {
     return res.status(405).end('Method Not Allowed');
   }
 
-  const { plan } = req.body;
+  const { priceId, userId } = req.body;
 
-  let priceId = '';
-  if (plan === 'monthly') {
-    priceId = 'price_1RiMrVP5xBmXAZIzQjch7WCc';
-  } else if (plan === 'yearly') {
-    priceId = 'price_1RiMwVP5xBmXAZIznSfRd8aL';
-  } else {
-    return res.status(400).json({ error: 'Invalid plan selected' });
+  if (!priceId || !userId) {
+    return res.status(400).json({ error: 'Missing required parameters' });
   }
 
   try {
@@ -21,12 +16,17 @@ export default async function handler(req, res) {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: 'https://your-app.vercel.app/success',
-      cancel_url: 'https://your-app.vercel.app/cancel',
+      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin}/pricing`,
+      client_reference_id: userId,
+      metadata: {
+        userId: userId
+      }
     });
 
-    res.status(200).json({ id: session.id });
+    res.status(200).json({ sessionId: session.id });
   } catch (err) {
+    console.error('Stripe error:', err);
     res.status(500).json({ error: err.message });
   }
 }
